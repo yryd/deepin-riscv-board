@@ -6,11 +6,13 @@ OUT_DIR=$(HOME)/output
 DEVICE=/dev/loop100
 DISTURB=deepin
 DEEPIN_REPO=https://mirror.iscas.ac.cn/deepin-riscv/deepin-stage1/
+nproc=8
 
 all: test_machine_info
 
 test_machine_info:
 	uname -a
+    echo $(nproc)
     lscpu
     whoami
     env
