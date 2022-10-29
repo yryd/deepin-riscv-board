@@ -11,7 +11,7 @@ all: test_machine_info
 
 test_machine_info:
 	uname -a
-    echo $$(nproc)
+    echo $(nproc)
     lscpu
     whoami
     env
