@@ -41,7 +41,7 @@ install_qemu:
 install_build:
 	apt update
 	apt install -y gdisk dosfstools g++-12-riscv64-linux-gnu build-essential \
-                        libncurses-dev gawk flex bison openssl libssl-dev \
+                        libncurses-dev gawk flex bison openssl libssl-dev parted \
                         dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf mkbootimg \
                         fakeroot genext2fs genisoimage libconfuse-dev mtd-utils mtools qemu-utils qemu-utils squashfs-tools \
                         device-tree-compiler rauc simg2img u-boot-tools f2fs-tools arm-trusted-firmware-tools swig
@@ -68,8 +68,8 @@ create_rootfsimg:
 
 
 unpack_root_tarball:
-	pushd rootfs
-		tar xpvf ../deepin-beige-stage1-minbase.tar --xattrs-include='*.*' --numeric-owner
+	pushd rootfs;\
+		tar xpvf ../deepin-beige-stage1-minbase.tar --xattrs-include='*.*' --numeric-owner;\
 	popd
 
 mount_and_setup:
