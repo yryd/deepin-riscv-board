@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 CROSS_COMPILE=riscv64-linux-gnu-
 ARCH=riscv
