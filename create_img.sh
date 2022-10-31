@@ -3,8 +3,8 @@
 CROSS_COMPILE=riscv64-linux-gnu-
 ARCH=riscv
 SKIP_INSTALL_PACKAGE=no
-HOME=/tmp/cirrus-ci-build/
-OUT_DIR=/tmp/cirrus-ci-build/output
+HOME=$(pwd)
+OUT_DIR=$HOME/output
 DEVICE=/dev/loop100
 DISTURB=deepin
 DEEPIN_REPO=https://mirror.iscas.ac.cn/deepin-riscv/deepin-stage1/
@@ -16,22 +16,11 @@ COMMIT_KERNEL='fe178cf0153d98b71cb01a46c8cc050826a17e77' # equals riscv/d1-wip h
 KERNEL_TAG='riscv/d1-wip'
 KERNEL_RELEASE='5.19.0-AllWinnerD1-Smaeul' # must match commit!
 
-SOURCE_BOOT0='https://github.com/smaeul/sun20i_d1_spl'
+SOURCE_BOOT0='https://gitclone.com/github.com/smaeul/sun20i_d1_spl'
 SOURCE_OPENSBI='https://github.com/smaeul/opensbi'
 SOURCE_UBOOT='https://github.com/smaeul/u-boot'
 SOURCE_KERNEL='https://github.com/smaeul/linux'
 
-cheak_connect() {
-    while :
-    do
-        git clone $1
-        is_exec_succ=$?
-        if [ "x$is_exec_succ" = "x0" ]
-        then
-            break
-        fi
-    done
-}
 
 test_machine_infoscript() {
     uname -a
@@ -51,7 +40,7 @@ install_qemu_script() {
 install_build_script() {
     apt update
     apt install -y gdisk dosfstools g++-10-riscv64-linux-gnu build-essential \
-                    libncurses-dev gawk flex bison openssl parted libssl-dev \
+                    libncurses-dev gawk flex bison openssl parted libssl-dev bc \
                     dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf mkbootimg \
                     fakeroot genext2fs genisoimage libconfuse-dev mtd-utils mtools qemu-utils qemu-utils squashfs-tools \
                     device-tree-compiler rauc simg2img u-boot-tools f2fs-tools arm-trusted-firmware-tools swig
@@ -92,7 +81,7 @@ create_rootfsimg_script() {
         losetup -P "${DEVICE}" rootfs.img
         parted -s -a optimal -- "${DEVICE}" mklabel gpt
         parted -s -a optimal -- "${DEVICE}" mkpart primary ext2 40MiB 500MiB
-        parted -s -a optimal -- "${DEVICE}" mkpart primary ext4 540MiB 100%
+        parted -s -a optimal -- "${DEVICE}" mkpart primary ext4 500MiB 100%
         partprobe "${DEVICE}"
         mkfs.ext2 -F -L boot "${DEVICE}p1"
         mkfs.ext4 -F -L root "${DEVICE}p2"
@@ -227,8 +216,8 @@ kernel_script() {
 
         git clone https://github.com/lwfinger/rtl8723ds.git
         pushd rtl8723ds
-        git checkout "83032266f6fbd7a6775ecf23fb4f807343ffc6f2" # lock-version
-        make CROSS_COMPILE=${CROSS_COMPILE} ARCH=${ARCH} KSRC=../ -j$(nproc) modules || true
+            git checkout "83032266f6fbd7a6775ecf23fb4f807343ffc6f2" # lock-version
+            make CROSS_COMPILE=${CROSS_COMPILE} ARCH=${ARCH} KSRC=../ -j$(nproc) modules || true
         popd
         for kernel_version in $(ls ../rootfs/lib/modules/);
         do
@@ -243,7 +232,7 @@ kernel_script() {
 
 boot0_script() {
     DIR='sun20i_d1_spl'
-    git clone https://github.com/smaeul/sun20i_d1_spl ${DIR}
+    git clone https://gitclone.com/github.com/smaeul/sun20i_d1_spl ${DIR}
     pushd ${DIR}
         git checkout "${COMMIT_BOOT0}"
         sed -i '/Werror/d' mk/config.mk
