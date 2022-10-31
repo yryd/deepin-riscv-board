@@ -142,8 +142,7 @@ update_root_tarball_script() {
 }
 
 kernel_script() {
-    clone="--depth=1 -b ${KERNEL_TAG} ${SOURCE_KERNEL} kernel"
-    cheak_connect ${clone}
+    git clone --depth=1 -b ${KERNEL_TAG} ${SOURCE_KERNEL} kernel
 
     pushd kernel
         export DIR=$PWD
