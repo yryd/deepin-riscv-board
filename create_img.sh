@@ -21,6 +21,17 @@ SOURCE_OPENSBI='https://github.com/smaeul/opensbi'
 SOURCE_UBOOT='https://github.com/smaeul/u-boot'
 SOURCE_KERNEL='https://github.com/smaeul/linux'
 
+cheak_connect() {
+    while :
+    do
+        git clone $1
+        is_exec_succ=$?
+        if [ "x$is_exec_succ" = "x0" ]
+        then
+            break
+        fi
+    done
+}
 
 test_machine_infoscript() {
     uname -a
@@ -93,7 +104,7 @@ create_rootfsimg_script() {
 
 unpack_root_tarball_script() {
     pushd rootfs
-    tar xpvf ../deepin-beige-stage1-minbase.tar --xattrs-include='*.*' --numeric-owner
+        tar xpvf ../deepin-beige-stage1-minbase.tar --xattrs-include='*.*' --numeric-owner
     popd
 }
 
@@ -131,7 +142,9 @@ update_root_tarball_script() {
 }
 
 kernel_script() {
-    git clone --depth=1 -b ${KERNEL_TAG} ${SOURCE_KERNEL} kernel
+    clone="--depth=1 -b ${KERNEL_TAG} ${SOURCE_KERNEL} kernel"
+    cheak_connect ${clone}
+
     pushd kernel
         export DIR=$PWD
         echo "CONFIG_LOCALVERSION=${KERNEL_RELEASE}" >> ${DIR}/arch/riscv/configs/nezha_defconfig
