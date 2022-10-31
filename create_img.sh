@@ -319,5 +319,4 @@ all () {
     clean_rootfs_script
 }
 
-all
-
+$1
