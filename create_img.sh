@@ -8,6 +8,7 @@ OUT_DIR=$HOME/output
 DEVICE=/dev/loop100
 DISTURB=deepin
 DEEPIN_REPO=https://mirror.iscas.ac.cn/deepin-riscv/deepin-stage1/
+DEEPIN_VERSION=deepin-beige-stage1-dde.tar
 
 base_path=d1
 COMMIT_BOOT0='882671fcf53137aaafc3a94fa32e682cb7b921f1'
@@ -16,7 +17,7 @@ COMMIT_KERNEL='fe178cf0153d98b71cb01a46c8cc050826a17e77' # equals riscv/d1-wip h
 KERNEL_TAG='riscv/d1-wip'
 KERNEL_RELEASE='5.19.0-AllWinnerD1-Smaeul' # must match commit!
 
-SOURCE_BOOT0='https://gitclone.com/github.com/smaeul/sun20i_d1_spl'
+SOURCE_BOOT0='https://github.com/smaeul/sun20i_d1_spl'
 SOURCE_OPENSBI='https://github.com/smaeul/opensbi'
 SOURCE_UBOOT='https://github.com/smaeul/u-boot'
 SOURCE_KERNEL='https://github.com/smaeul/linux'
@@ -40,7 +41,7 @@ install_qemu_script() {
 install_build_script() {
     apt update
     apt install -y gdisk dosfstools g++-10-riscv64-linux-gnu build-essential \
-                    libncurses-dev gawk flex bison openssl parted libssl-dev bc \
+                    libncurses-dev gawk flex bison openssl parted libssl-dev bc zstd \
                     dkms libelf-dev libudev-dev libpci-dev libiberty-dev autoconf mkbootimg \
                     fakeroot genext2fs genisoimage libconfuse-dev mtd-utils mtools qemu-utils qemu-utils squashfs-tools \
                     device-tree-compiler rauc simg2img u-boot-tools f2fs-tools arm-trusted-firmware-tools swig
@@ -49,35 +50,13 @@ install_build_script() {
 }
 
 download_root_tarball_script() {
-    wget https://mirror.iscas.ac.cn/deepin-riscv/deepin-stage1/deepin-beige-stage1-minbase.tar
+    wget https://mirror.iscas.ac.cn/deepin-riscv/deepin-stage1/${DEEPIN_VERSION}
 }
 
 create_rootfsimg_script() {
     mkdir rootfs
-    fallocate -l 7G rootfs.img
-    if [ x"${base_path}" = x"visionfive" ]; then
-        sfdisk rootfs.img < ${base_path}/part-table.conf
-        losetup -P "${DEVICE}" rootfs.img
-        mkfs.ext4 "${DEVICE}"p3
-        mkfs.ext4 "${DEVICE}"p4
-        mkfs.vfat -F32 "${DEVICE}"p2
-        mount "${DEVICE}"p4 rootfs
-        mkdir rootfs/boot
-        mount "${DEVICE}"p3 rootfs/boot
-        mkdir rootfs/boot/efi
-        mount "${DEVICE}"p2 rootfs/boot/efi
-    elif [ x"${base_path}" = x"visionfive-2" ]; then
-        sfdisk rootfs.img < ${base_path}/part-table.conf
-        losetup -P "${DEVICE}" rootfs.img
-        mkfs.vfat -F32 "${DEVICE}"p3
-        mkfs.ext4 "${DEVICE}"p4
-        mkfs.vfat -F32 "${DEVICE}"p2
-        mount "${DEVICE}"p4 rootfs
-        mkdir rootfs/boot
-        mount "${DEVICE}"p3 rootfs/boot
-        mkdir rootfs/boot/efi
-        mount "${DEVICE}"p2 rootfs/boot/efi
-    elif [ x"${base_path}" = x"d1" ]; then
+    fallocate -l 3G rootfs.img
+    if [ x"${base_path}" = x"d1" ]; then
         losetup -P "${DEVICE}" rootfs.img
         parted -s -a optimal -- "${DEVICE}" mklabel gpt
         parted -s -a optimal -- "${DEVICE}" mkpart primary ext2 40MiB 500MiB
@@ -93,7 +72,7 @@ create_rootfsimg_script() {
 
 unpack_root_tarball_script() {
     pushd rootfs
-        tar xpvf ../deepin-beige-stage1-minbase.tar --xattrs-include='*.*' --numeric-owner
+        tar xpvf ../${DEEPIN_VERSION} --xattrs-include='*.*' --numeric-owner
     popd
 }
 
@@ -124,7 +103,7 @@ update_root_tarball_script() {
         echo "deb [trusted=yes] ${DEEPIN_REPO} beige main" > etc/apt/sources.list
         chroot . /bin/bash -c "source /etc/profile && apt update && apt install -y systemd initramfs-tools systemd-sysv nano sudo network-manager iproute2"
         chroot . /bin/bash -c "source /etc/profile && systemctl enable systemd-networkd"
-        chroot . /bin/bash -c "source /etc/profile && echo root:Riscv2022# | chpasswd"
+        chroot . /bin/bash -c "source /etc/profile && echo root:1234 | chpasswd && passwd -d root"
         chroot . /bin/bash -c "source /etc/profile && echo deepin-riscv > /etc/hostname"
         ls -al boot/
     popd
@@ -291,17 +270,28 @@ clean_rootfs_script() {
         cp -vr rootfs/lib/modules kernel-output
     fi
 
-    tar -I zstd -cvf ${DISTURB}-kernel-${base_path}-$(date +%Y%m%d%H%M%S).tar.zst kernel-output
+    tar -I zstd -cvf ${DISTURB}-kernel-${base_path}.tar.zst kernel-output
 
     rm -rf rootfs/root/*
     umount rootfs/proc rootfs/dev/shm rootfs/dev rootfs/sys rootfs/run
     umount -l rootfs
     losetup -d ${DEVICE}
-    export file_name=${DISTURB}-${base_path}-$(date +%Y%m%d%H%M%S)
+    export file_name=${DISTURB}-${base_path}
     mv rootfs.img ${file_name}.img
     zstd -T0 --ultra -20 $file_name.img
     ls -al .
 }
+
+remount() {
+    losetup -P "${DEVICE}" "${DISTURB}-${base_path}.img"
+    mount "${DEVICE}p2" rootfs
+}
+
+umount_all() {
+    umount -l rootfs
+    losetup -d ${DEVICE}
+}
+
 
 all () {
     test_machine_infoscript
