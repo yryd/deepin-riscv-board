@@ -55,7 +55,7 @@ download_root_tarball_script() {
 
 create_rootfsimg_script() {
     mkdir rootfs
-    fallocate -l 3G rootfs.img
+    fallocate -l 4G rootfs.img
     if [ x"${base_path}" = x"d1" ]; then
         losetup -P "${DEVICE}" rootfs.img
         parted -s -a optimal -- "${DEVICE}" mklabel gpt
@@ -101,9 +101,11 @@ update_root_tarball_script() {
     fi
     pushd rootfs
         echo "deb [trusted=yes] ${DEEPIN_REPO} beige main" > etc/apt/sources.list
+        echo "deb-src [trusted=yes] ${DEEPIN_REPO} beige main" >> etc/apt/sources.list
         chroot . /bin/bash -c "source /etc/profile && apt update && apt install -y systemd initramfs-tools systemd-sysv nano sudo network-manager iproute2"
         chroot . /bin/bash -c "source /etc/profile && systemctl enable systemd-networkd"
-        chroot . /bin/bash -c "source /etc/profile && echo root:1234 | chpasswd && passwd -d root"
+        chroot . /bin/bash -c "source /etc/profile && echo root:1234 | chpasswd"
+        chroot . /bin/bash -c "source /etc/profile && passwd -d root"
         chroot . /bin/bash -c "source /etc/profile && echo deepin-riscv > /etc/hostname"
         ls -al boot/
     popd
@@ -177,7 +179,7 @@ kernel_script() {
         echo 'CONFIG_MEDIA_CONTROLLER_REQUEST_API=y' >> ${DIR}/arch/riscv/configs/nezha_defconfig
         echo 'CONFIG_V4L_MEM2MEM_DRIVERS=y' >> ${DIR}/arch/riscv/configs/nezha_defconfig
         echo 'CONFIG_VIDEO_SUNXI_CEDRUS=y' >> ${DIR}/arch/riscv/configs/nezha_defconfig
-
+        echo 'CONFIG_DRM_SUN4I_HDMI=y' >> ${DIR}/arch/riscv/configs/nezha_defconfig
         make CROSS_COMPILE=riscv64-linux-gnu- ARCH=riscv nezha_defconfig
         make CROSS_COMPILE=riscv64-linux-gnu- ARCH=riscv -j$(nproc)
         if [ x"$(cat .config | grep CONFIG_MODULES=y)" = x"CONFIG_MODULES=y" ]; then
@@ -211,7 +213,7 @@ kernel_script() {
 
 boot0_script() {
     DIR='sun20i_d1_spl'
-    git clone https://gitclone.com/github.com/smaeul/sun20i_d1_spl ${DIR}
+    git clone https://github.com/smaeul/sun20i_d1_spl ${DIR}
     pushd ${DIR}
         git checkout "${COMMIT_BOOT0}"
         sed -i '/Werror/d' mk/config.mk
@@ -278,16 +280,18 @@ clean_rootfs_script() {
     losetup -d ${DEVICE}
     export file_name=${DISTURB}-${base_path}
     mv rootfs.img ${file_name}.img
-    zstd -T0 --ultra -20 $file_name.img
+    # zstd -T0 --ultra -20 $file_name.img
     ls -al .
 }
 
 remount() {
     losetup -P "${DEVICE}" "${DISTURB}-${base_path}.img"
     mount "${DEVICE}p2" rootfs
+    mount "${DEVICE}p1" rootfs/boot
 }
 
 umount_all() {
+    umount -l rootfs/boot
     umount -l rootfs
     losetup -d ${DEVICE}
 }
